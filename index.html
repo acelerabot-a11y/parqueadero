@@ -1,0 +1,1766 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Parqueadero - Sistema de Recibos</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --bg: #eef2f7;
+      --card-bg: white;
+      --text: #333;
+      --text-secondary: #666;
+      --text-muted: #888;
+      --text-faint: #aaa;
+      --input-bg: #f8f9fb;
+      --input-border: #e8ecf1;
+      --divider: #f0f2f5;
+      --hover-bg: #f8f9fc;
+      --shadow: rgba(0,0,0,0.06);
+      --receipt-bg: #fffef5;
+      --receipt-border: #d4c99e;
+    }
+
+    :root.dark {
+      --bg: #1a1a2e;
+      --card-bg: #222244;
+      --text: #e8e8f0;
+      --text-secondary: #b0b0c8;
+      --text-muted: #8888a8;
+      --text-faint: #666688;
+      --input-bg: #2a2a4a;
+      --input-border: #3a3a5a;
+      --divider: #2e2e4e;
+      --hover-bg: #2e2e50;
+      --shadow: rgba(0,0,0,0.2);
+      --receipt-bg: #2a2a3e;
+      --receipt-border: #4a4a6a;
+    }
+
+    body {
+      font-family: 'Inter', 'Segoe UI', Tahoma, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      transition: background 0.3s, color 0.3s;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(12px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes scaleIn {
+      from { opacity: 0; transform: scale(0.9); }
+      to { opacity: 1; transform: scale(1); }
+    }
+
+    @keyframes slideDown {
+      from { opacity: 0; transform: translateY(-20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.05); }
+    }
+
+    @keyframes checkmark {
+      0% { transform: scale(0) rotate(-45deg); opacity: 0; }
+      50% { transform: scale(1.2) rotate(0deg); opacity: 1; }
+      100% { transform: scale(1) rotate(0deg); opacity: 1; }
+    }
+
+    @keyframes ripple {
+      0% { transform: scale(0); opacity: 0.5; }
+      100% { transform: scale(4); opacity: 0; }
+    }
+
+    .header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 20px 20px 16px;
+      box-shadow: 0 4px 20px rgba(102,126,234,0.4);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .header::before {
+      content: '';
+      position: absolute;
+      top: -50%;
+      left: -50%;
+      width: 200%;
+      height: 200%;
+      background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 60%);
+      animation: pulse 4s ease-in-out infinite;
+    }
+
+    .header-top {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+      position: relative;
+    }
+
+    .header-logo {
+      width: 52px;
+      height: 52px;
+      background: rgba(255,255,255,0.2);
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.8rem;
+      backdrop-filter: blur(8px);
+      border: 2px solid rgba(255,255,255,0.25);
+      flex-shrink: 0;
+    }
+
+    .header-text {
+      text-align: left;
+    }
+
+    .header h1 {
+      font-size: 1.5rem;
+      font-weight: 800;
+      letter-spacing: 2px;
+      position: relative;
+      line-height: 1.2;
+    }
+
+    .header-subtitle {
+      font-size: 0.78rem;
+      opacity: 0.8;
+      font-weight: 400;
+      position: relative;
+    }
+
+    .header-info {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 14px;
+      padding-top: 12px;
+      border-top: 1px solid rgba(255,255,255,0.15);
+      position: relative;
+    }
+
+    .header-info-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.78rem;
+      font-weight: 500;
+      opacity: 0.9;
+    }
+
+    .header-info-icon {
+      width: 28px;
+      height: 28px;
+      background: rgba(255,255,255,0.15);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.85rem;
+    }
+
+    .header-active-count {
+      background: rgba(255,255,255,0.2);
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 0.78rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      backdrop-filter: blur(8px);
+    }
+
+    .header-active-dot {
+      width: 8px;
+      height: 8px;
+      background: #69f0ae;
+      border-radius: 50%;
+      animation: pulse 2s ease-in-out infinite;
+    }
+
+    .theme-toggle {
+      position: absolute;
+      top: 16px;
+      right: 16px;
+      width: 40px;
+      height: 40px;
+      border-radius: 12px;
+      border: 2px solid rgba(255,255,255,0.25);
+      background: rgba(255,255,255,0.15);
+      backdrop-filter: blur(8px);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.2rem;
+      transition: all 0.3s;
+      z-index: 10;
+    }
+
+    .theme-toggle:hover {
+      background: rgba(255,255,255,0.25);
+      transform: scale(1.1);
+    }
+
+    .container {
+      max-width: 520px;
+      margin: 20px auto;
+      padding: 0 16px;
+    }
+
+    .tabs {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 20px;
+      background: var(--card-bg);
+      border-radius: 14px;
+      padding: 5px;
+      box-shadow: 0 2px 8px var(--shadow);
+      transition: background 0.3s;
+    }
+
+    .tab {
+      flex: 1;
+      padding: 12px;
+      border: none;
+      border-radius: 10px;
+      font-size: 0.88rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      background: transparent;
+      color: #888;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .tab:hover { color: #667eea; }
+
+    .tab.active {
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      color: white;
+      box-shadow: 0 4px 12px rgba(102,126,234,0.4);
+    }
+
+    .card {
+      background: var(--card-bg);
+      border-radius: 16px;
+      padding: 24px;
+      box-shadow: 0 2px 12px var(--shadow);
+      margin-bottom: 16px;
+      animation: fadeIn 0.4s ease-out;
+      transition: background 0.3s;
+    }
+
+    .card h2 {
+      font-size: 1.05rem;
+      margin-bottom: 20px;
+      color: var(--text);
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .card h2::before {
+      content: '';
+      width: 4px;
+      height: 20px;
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      border-radius: 2px;
+    }
+
+    .form-group {
+      margin-bottom: 18px;
+    }
+
+    .form-group label {
+      display: block;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--text-secondary);
+      margin-bottom: 8px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .form-group input, .form-group select {
+      width: 100%;
+      padding: 14px 40px 14px 16px;
+      border: 2px solid var(--input-border);
+      border-radius: 12px;
+      font-size: 1rem;
+      font-family: 'Inter', sans-serif;
+      transition: all 0.3s;
+      outline: none;
+      background: var(--input-bg);
+      color: var(--text);
+    }
+
+    .form-group input:focus, .form-group select:focus {
+      border-color: #667eea;
+      background: var(--card-bg);
+      box-shadow: 0 0 0 4px rgba(102,126,234,0.1);
+    }
+
+    .form-group input.valid {
+      border-color: #4caf50;
+      background: var(--input-bg);
+    }
+
+    .form-group input.valid:focus {
+      box-shadow: 0 0 0 4px rgba(76,175,80,0.1);
+    }
+
+    .form-group input.invalid {
+      border-color: #ff5252;
+      background: var(--input-bg);
+    }
+
+    .form-group input::placeholder {
+      color: #bfc5d0;
+    }
+
+    .form-group .input-wrapper {
+      position: relative;
+    }
+
+    .form-group .input-icon {
+      position: absolute;
+      right: 14px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 1rem;
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+
+    .form-group .input-icon.show { opacity: 1; }
+
+    .autocomplete-badge {
+      display: inline-block;
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      color: white;
+      font-size: 0.65rem;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 4px;
+      margin-left: 8px;
+      opacity: 0;
+      transition: opacity 0.3s;
+      vertical-align: middle;
+    }
+
+    .autocomplete-badge.show { opacity: 1; }
+
+    .vehicle-types {
+      display: flex;
+      gap: 10px;
+    }
+
+    .vehicle-type {
+      flex: 1;
+      padding: 16px 8px;
+      border: 2px solid var(--input-border);
+      border-radius: 14px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      background: var(--input-bg);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .vehicle-type:hover {
+      border-color: #b8c4ea;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    }
+
+    .vehicle-type.selected {
+      border-color: #667eea;
+      background: linear-gradient(135deg, #eef0ff, #f3eeff);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 16px rgba(102,126,234,0.2);
+    }
+
+    .vehicle-type.selected::after {
+      content: '\2713';
+      position: absolute;
+      top: 6px;
+      right: 8px;
+      font-size: 0.65rem;
+      background: #667eea;
+      color: white;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      animation: scaleIn 0.3s ease-out;
+    }
+
+    .vehicle-type .icon {
+      font-size: 2rem;
+      transition: transform 0.3s;
+    }
+
+    .vehicle-type:hover .icon { transform: scale(1.15); }
+    .vehicle-type.selected .icon { transform: scale(1.15); }
+
+    .vehicle-type .label {
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: var(--text-secondary);
+      margin-top: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .vehicle-type.selected .label { color: #667eea; }
+
+    .btn {
+      width: 100%;
+      padding: 15px;
+      border: none;
+      border-radius: 12px;
+      font-size: 0.95rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      font-family: 'Inter', sans-serif;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .btn::after {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 0;
+      height: 0;
+      background: rgba(255,255,255,0.3);
+      border-radius: 50%;
+      transition: width 0.4s, height 0.4s;
+      transform: translate(-50%, -50%);
+    }
+
+    .btn:active::after {
+      width: 300px;
+      height: 300px;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      color: white;
+      box-shadow: 0 4px 15px rgba(102,126,234,0.4);
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(102,126,234,0.5);
+    }
+
+    .btn-primary:active { transform: translateY(0); }
+
+    .btn-secondary {
+      background: var(--input-bg);
+      color: var(--text-secondary);
+      border: 2px solid var(--input-border);
+      margin-top: 10px;
+    }
+
+    .btn-secondary:hover {
+      background: var(--hover-bg);
+      border-color: var(--text-faint);
+    }
+
+    .btn-whatsapp {
+      background: linear-gradient(135deg, #25d366, #128c7e);
+      color: white;
+      margin-top: 10px;
+      box-shadow: 0 4px 12px rgba(37,211,102,0.3);
+    }
+
+    .btn-whatsapp:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 16px rgba(37,211,102,0.4);
+    }
+
+    .btn-export {
+      background: linear-gradient(135deg, #2196f3, #0d47a1);
+      color: white;
+      margin-top: 12px;
+      box-shadow: 0 4px 12px rgba(33,150,243,0.3);
+    }
+
+    .btn-export:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 16px rgba(33,150,243,0.4);
+    }
+
+    .btn-danger {
+      background: linear-gradient(135deg, #ff6b6b, #ee5a24);
+      color: white;
+      margin-top: 12px;
+      box-shadow: 0 4px 12px rgba(238,90,36,0.3);
+    }
+
+    .btn-danger:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 16px rgba(238,90,36,0.4);
+    }
+
+    .section { display: none; }
+    .section.active { display: block; animation: fadeIn 0.4s ease-out; }
+
+    /* Receipt styles */
+    .receipt-preview {
+      background: var(--receipt-bg);
+      border: 2px dashed var(--receipt-border);
+      border-radius: 12px;
+      padding: 24px;
+      font-family: 'Courier New', monospace;
+      font-size: 0.8rem;
+      line-height: 1.6;
+      position: relative;
+    }
+
+    .receipt-preview::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 20px;
+      right: 20px;
+      height: 8px;
+      background: repeating-linear-gradient(90deg, transparent, transparent 4px, #fffef5 4px, #fffef5 8px);
+      border-bottom: 2px dashed #d4c99e;
+    }
+
+    .receipt-preview .receipt-header {
+      text-align: center;
+      font-weight: bold;
+      font-size: 1.05rem;
+      margin-bottom: 12px;
+      border-bottom: 2px dashed var(--receipt-border);
+      padding-bottom: 12px;
+      color: var(--text);
+    }
+
+    .receipt-preview .receipt-line {
+      display: flex;
+      justify-content: space-between;
+      padding: 4px 0;
+    }
+
+    .receipt-preview .receipt-line .label { font-weight: bold; color: var(--text-secondary); }
+
+    .receipt-preview .receipt-divider {
+      border-top: 1px dashed var(--receipt-border);
+      margin: 10px 0;
+    }
+
+    .receipt-preview .terms {
+      font-size: 0.62rem;
+      color: var(--text-muted);
+      line-height: 1.4;
+      margin-top: 12px;
+    }
+
+    .receipt-preview .terms h4 {
+      font-size: 0.7rem;
+      color: var(--text-secondary);
+      margin-bottom: 6px;
+      font-weight: 700;
+    }
+
+    /* History */
+    .history-item {
+      display: flex;
+      align-items: center;
+      padding: 14px 12px;
+      border-bottom: 1px solid var(--divider);
+      gap: 14px;
+      transition: background 0.2s;
+      border-radius: 10px;
+      margin: 2px 0;
+    }
+
+    .history-item:hover { background: var(--hover-bg); }
+    .history-item:last-child { border-bottom: none; }
+
+    .history-item .h-icon {
+      font-size: 1.6rem;
+      width: 46px;
+      height: 46px;
+      background: var(--input-bg);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .history-item .h-info { flex: 1; }
+    .history-item .h-info .h-plate { font-weight: 700; font-size: 0.95rem; color: var(--text); }
+    .history-item .h-info .h-name { font-size: 0.8rem; color: var(--text-muted); margin-top: 2px; }
+    .history-item .h-info .h-time { font-size: 0.73rem; color: var(--text-faint); margin-top: 2px; }
+
+    .history-item .h-actions { display: flex; gap: 6px; }
+
+    .btn-small {
+      padding: 8px 14px;
+      border: none;
+      border-radius: 8px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-family: 'Inter', sans-serif;
+    }
+
+    .btn-view {
+      background: #eef0ff;
+      color: #667eea;
+    }
+
+    .btn-view:hover { background: #dde1ff; }
+
+    .btn-delete {
+      background: #fff0f0;
+      color: #e53935;
+    }
+
+    .btn-delete:hover { background: #ffe0e0; }
+
+    .empty-state {
+      text-align: center;
+      padding: 50px 20px;
+      color: var(--text-faint);
+    }
+
+    .empty-state .empty-icon {
+      font-size: 3.5rem;
+      margin-bottom: 12px;
+      opacity: 0.5;
+    }
+
+    .empty-state p { font-size: 0.9rem; }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+
+    .stat {
+      background: var(--card-bg);
+      border-radius: 14px;
+      padding: 16px 8px;
+      text-align: center;
+      box-shadow: 0 2px 8px var(--shadow);
+      transition: background 0.3s;
+      transition: transform 0.2s;
+    }
+
+    .stat:hover { transform: translateY(-2px); }
+
+    .stat .stat-number {
+      font-size: 1.6rem;
+      font-weight: 800;
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .stat .stat-label {
+      font-size: 0.65rem;
+      color: var(--text-faint);
+      margin-top: 4px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+    }
+
+    .success-msg {
+      text-align: center;
+      padding: 24px;
+      animation: fadeIn 0.5s ease-out;
+    }
+
+    .success-msg .check {
+      font-size: 3.5rem;
+      margin-bottom: 12px;
+      display: inline-block;
+      animation: checkmark 0.6s ease-out;
+      width: 70px;
+      height: 70px;
+      background: linear-gradient(135deg, #56ab2f, #a8e063);
+      border-radius: 50%;
+      line-height: 70px;
+      color: white;
+    }
+
+    .success-msg h3 {
+      color: #2e7d32;
+      margin-bottom: 6px;
+      font-size: 1.2rem;
+    }
+
+    .success-msg p { color: var(--text-muted); font-size: 0.85rem; }
+
+    /* Print styles */
+    @media print {
+      body { background: white; }
+      .header, .tabs, .no-print { display: none !important; }
+      .container { max-width: 58mm; margin: 0; padding: 0; }
+      .card { box-shadow: none; border: none; padding: 5px; border-radius: 0; }
+      .receipt-preview { border: none; padding: 0; font-size: 0.7rem; background: white; }
+      .receipt-preview::before { display: none; }
+      .receipt-preview .terms { font-size: 0.55rem; }
+      .success-msg { display: none; }
+    }
+
+    @media print and (max-width: 58mm) {
+      .receipt-preview { font-size: 0.6rem; }
+    }
+
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.5);
+      backdrop-filter: blur(4px);
+      z-index: 100;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .modal-overlay.active { display: flex; }
+
+    .modal {
+      background: var(--card-bg);
+      border-radius: 20px;
+      padding: 28px;
+      max-width: 420px;
+      width: 100%;
+      max-height: 90vh;
+      overflow-y: auto;
+      animation: scaleIn 0.3s ease-out;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    }
+
+    .chart-container {
+      display: flex;
+      align-items: flex-end;
+      gap: 4px;
+      height: 140px;
+      padding: 10px 0;
+    }
+
+    .chart-bar-wrapper {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      height: 100%;
+      justify-content: flex-end;
+    }
+
+    .chart-bar {
+      width: 100%;
+      max-width: 28px;
+      background: linear-gradient(180deg, #667eea, #764ba2);
+      border-radius: 6px 6px 0 0;
+      min-height: 2px;
+      transition: height 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+      position: relative;
+    }
+
+    .chart-bar:hover { opacity: 0.8; }
+
+    .chart-bar-value {
+      font-size: 0.6rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      margin-bottom: 4px;
+    }
+
+    .chart-bar-label {
+      font-size: 0.58rem;
+      color: var(--text-faint);
+      margin-top: 6px;
+      font-weight: 600;
+    }
+
+    .chart-tipos {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      padding: 8px 0;
+    }
+
+    .tipo-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .tipo-row .tipo-label {
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--text-secondary);
+      width: 70px;
+      flex-shrink: 0;
+    }
+
+    .tipo-row .tipo-bar-bg {
+      flex: 1;
+      height: 24px;
+      background: var(--input-bg);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+
+    .tipo-row .tipo-bar-fill {
+      height: 100%;
+      border-radius: 12px;
+      transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+      display: flex;
+      align-items: center;
+      padding-left: 10px;
+      font-size: 0.7rem;
+      font-weight: 700;
+      color: white;
+      min-width: 30px;
+    }
+
+    .tipo-carro { background: linear-gradient(90deg, #667eea, #764ba2); }
+    .tipo-moto { background: linear-gradient(90deg, #f093fb, #f5576c); }
+    .tipo-camion { background: linear-gradient(90deg, #4facfe, #00f2fe); }
+
+    .search-bar {
+      position: relative;
+      margin-bottom: 12px;
+    }
+
+    .search-bar input {
+      width: 100%;
+      padding: 12px 16px 12px 40px;
+      border: 2px solid var(--input-border);
+      border-radius: 10px;
+      font-size: 0.88rem;
+      font-family: 'Inter', sans-serif;
+      outline: none;
+      background: var(--input-bg);
+      color: var(--text);
+      transition: all 0.3s;
+    }
+
+    .search-bar input:focus {
+      border-color: #667eea;
+      background: var(--card-bg);
+      box-shadow: 0 0 0 4px rgba(102,126,234,0.1);
+    }
+
+    .search-bar input::placeholder { color: var(--text-faint); }
+
+    .search-icon-left {
+      position: absolute;
+      left: 14px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 0.9rem;
+      opacity: 0.5;
+    }
+
+    .filter-chips {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 14px;
+      flex-wrap: wrap;
+    }
+
+    .filter-chip {
+      padding: 6px 14px;
+      border: 2px solid var(--input-border);
+      border-radius: 20px;
+      background: var(--card-bg);
+      font-size: 0.75rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-family: 'Inter', sans-serif;
+      color: var(--text-muted);
+    }
+
+    .filter-chip:hover {
+      border-color: #b8c4ea;
+      color: #667eea;
+    }
+
+    .filter-chip.active {
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      color: white;
+      border-color: transparent;
+      box-shadow: 0 2px 8px rgba(102,126,234,0.3);
+    }
+
+    .toast {
+      position: fixed;
+      bottom: 30px;
+      left: 50%;
+      transform: translateX(-50%) translateY(100px);
+      background: #333;
+      color: white;
+      padding: 14px 28px;
+      border-radius: 12px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      box-shadow: 0 8px 30px rgba(0,0,0,0.3);
+      z-index: 200;
+      transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+      font-family: 'Inter', sans-serif;
+    }
+
+    .toast.show {
+      transform: translateX(-50%) translateY(0);
+    }
+
+    .toast.success { background: linear-gradient(135deg, #56ab2f, #438a25); }
+    .toast.error { background: linear-gradient(135deg, #e53935, #c62828); }
+  </style>
+</head>
+<body>
+
+<div class="header">
+  <button class="theme-toggle" id="theme-toggle" onclick="toggleDarkMode()">&#x1f319;</button>
+  <div class="header-top">
+    <div class="header-logo">&#x1f17f;</div>
+    <div class="header-text">
+      <h1>PARQUEADERO</h1>
+      <div class="header-subtitle">Sistema de Recibos</div>
+    </div>
+  </div>
+  <div class="header-info">
+    <div class="header-info-item">
+      <div class="header-info-icon">&#x1f4c5;</div>
+      <span id="header-fecha"></span>
+    </div>
+    <div class="header-info-item">
+      <div class="header-info-icon">&#x1f552;</div>
+      <span id="clock"></span>
+    </div>
+    <div class="header-active-count" id="header-activos">
+      <div class="header-active-dot"></div>
+      <span id="active-count">0</span> activos
+    </div>
+  </div>
+</div>
+
+<div class="container">
+  <div class="tabs">
+    <button class="tab active" onclick="showSection('register', this)">Registro</button>
+    <button class="tab" onclick="showSection('history', this)">Historial</button>
+    <button class="tab" onclick="showSection('stats', this)">Estadisticas</button>
+  </div>
+
+  <!-- REGISTRO -->
+  <div id="section-register" class="section active">
+    <div id="form-card" class="card">
+      <h2>Registrar Ingreso</h2>
+
+      <div class="form-group">
+        <label>Tipo de Vehiculo</label>
+        <div class="vehicle-types">
+          <div class="vehicle-type selected" onclick="selectVehicle(this, 'Carro')" data-type="Carro">
+            <div class="icon">&#x1f697;</div>
+            <div class="label">Carro</div>
+          </div>
+          <div class="vehicle-type" onclick="selectVehicle(this, 'Moto')" data-type="Moto">
+            <div class="icon">&#x1f3cd;</div>
+            <div class="label">Moto</div>
+          </div>
+          <div class="vehicle-type" onclick="selectVehicle(this, 'Camion')" data-type="Camion">
+            <div class="icon">&#x1f69a;</div>
+            <div class="label">Camion</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Placa del Vehiculo <span class="autocomplete-badge" id="auto-badge">AUTOCOMPLETADO</span></label>
+        <div class="input-wrapper">
+          <input type="text" id="placa" placeholder="Ej: ABC 123" maxlength="8" oninput="formatPlaca(this); buscarPlaca(this.value);">
+          <span class="input-icon" id="placa-icon"></span>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Nombre</label>
+        <div class="input-wrapper">
+          <input type="text" id="nombre" placeholder="Nombre del propietario" oninput="validarCampo(this, this.value.trim().length >= 2)">
+          <span class="input-icon" id="nombre-icon"></span>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Celular</label>
+        <div class="input-wrapper">
+          <input type="tel" id="celular" placeholder="Ej: 300 123 4567" maxlength="15" oninput="validarCampo(this, this.value.trim().length >= 7)">
+          <span class="input-icon" id="celular-icon"></span>
+        </div>
+      </div>
+
+      <button class="btn btn-primary" onclick="registrarIngreso()">Registrar Ingreso</button>
+    </div>
+
+    <!-- Success + Receipt -->
+    <div id="success-card" class="card" style="display:none;">
+      <div class="success-msg">
+        <div class="check">&#10004;</div>
+        <h3>Ingreso Registrado</h3>
+        <p>El recibo se ha generado correctamente</p>
+      </div>
+
+      <div class="receipt-preview" id="receipt-preview"></div>
+
+      <button class="btn btn-primary no-print" onclick="imprimirRecibo()" style="margin-top: 16px;">Imprimir Recibo</button>
+      <button class="btn btn-whatsapp no-print" onclick="compartirWhatsApp()">Compartir por WhatsApp</button>
+      <button class="btn btn-secondary no-print" onclick="nuevoRegistro()">Nuevo Registro</button>
+    </div>
+  </div>
+
+  <!-- HISTORIAL -->
+  <div id="section-history" class="section">
+    <div class="stats">
+      <div class="stat">
+        <div class="stat-number" id="stat-total">0</div>
+        <div class="stat-label">Hoy</div>
+      </div>
+      <div class="stat">
+        <div class="stat-number" id="stat-carros">0</div>
+        <div class="stat-label">Carros</div>
+      </div>
+      <div class="stat">
+        <div class="stat-number" id="stat-motos">0</div>
+        <div class="stat-label">Motos</div>
+      </div>
+      <div class="stat">
+        <div class="stat-number" id="stat-camiones">0</div>
+        <div class="stat-label">Camiones</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Vehiculos Registrados Hoy</h2>
+
+      <div class="search-bar">
+        <span class="search-icon-left">&#x1f50d;</span>
+        <input type="text" id="search-input" placeholder="Buscar por placa o nombre..." oninput="renderHistorial()">
+      </div>
+
+      <div class="filter-chips">
+        <button class="filter-chip active" onclick="setFilter('Todos', this)">Todos</button>
+        <button class="filter-chip" onclick="setFilter('Carro', this)">&#x1f697; Carro</button>
+        <button class="filter-chip" onclick="setFilter('Moto', this)">&#x1f3cd; Moto</button>
+        <button class="filter-chip" onclick="setFilter('Camion', this)">&#x1f69a; Camion</button>
+      </div>
+
+      <div id="history-list">
+        <div class="empty-state">
+          <div class="empty-icon">&#x1f697;</div>
+          <p>No hay registros hoy</p>
+        </div>
+      </div>
+    </div>
+
+    <button class="btn btn-export no-print" onclick="exportarCSV()">Exportar a Excel / CSV</button>
+    <button class="btn btn-danger no-print" onclick="confirmarLimpiar()">Limpiar Historial del Dia</button>
+  </div>
+
+  <!-- ESTADISTICAS -->
+  <div id="section-stats" class="section">
+    <div class="card">
+      <h2>Vehiculos por Hora (Hoy)</h2>
+      <div class="chart-container" id="chart-horas"></div>
+    </div>
+
+    <div class="stats" style="grid-template-columns: repeat(3, 1fr);">
+      <div class="stat">
+        <div class="stat-number" id="stat-semana">0</div>
+        <div class="stat-label">Esta Semana</div>
+      </div>
+      <div class="stat">
+        <div class="stat-number" id="stat-mes">0</div>
+        <div class="stat-label">Este Mes</div>
+      </div>
+      <div class="stat">
+        <div class="stat-number" id="stat-todos">0</div>
+        <div class="stat-label">Total</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Distribucion por Tipo</h2>
+      <div class="chart-tipos" id="chart-tipos"></div>
+    </div>
+
+    <div class="card">
+      <h2>Ultimos 7 Dias</h2>
+      <div class="chart-container" id="chart-semana"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal for receipt view -->
+<div class="modal-overlay" id="modal-receipt">
+  <div class="modal">
+    <div class="receipt-preview" id="modal-receipt-content"></div>
+    <button class="btn btn-primary" onclick="imprimirReciboModal()" style="margin-top:16px;">Imprimir</button>
+    <button class="btn btn-secondary" onclick="cerrarModal()">Cerrar</button>
+  </div>
+</div>
+
+<!-- Toast notification -->
+<div class="toast" id="toast"></div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+<script>
+  // Firebase config
+  const firebaseConfig = {
+    apiKey: "AIzaSyAye01eZwHsSSOAXNmbZaTO4qrOr_-XEKQ",
+    authDomain: "parqueadero-95546.firebaseapp.com",
+    projectId: "parqueadero-95546",
+    storageBucket: "parqueadero-95546.firebasestorage.app",
+    messagingSenderId: "807435779538",
+    appId: "1:807435779538:web:dada3be9e1b46b12d9dc0b"
+  };
+
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.firestore();
+  const registrosRef = db.collection('registros');
+
+  let vehiculoSeleccionado = 'Carro';
+  var filtroActivo = 'Todos';
+  var ultimoRegistro = null;
+  const STORAGE_KEY = 'parqueadero_registros';
+  var registrosCache = [];
+
+  function setFilter(tipo, btn) {
+    filtroActivo = tipo;
+    document.querySelectorAll('.filter-chip').forEach(function(c) { c.classList.remove('active'); });
+    if (btn) btn.classList.add('active');
+    renderHistorial();
+  }
+
+  // Modo oscuro
+  function toggleDarkMode() {
+    document.documentElement.classList.toggle('dark');
+    var isDark = document.documentElement.classList.contains('dark');
+    document.getElementById('theme-toggle').innerHTML = isDark ? '&#x2600;' : '&#x1f319;';
+    localStorage.setItem('parqueadero_tema', isDark ? 'dark' : 'light');
+  }
+
+  // Cargar tema guardado
+  if (localStorage.getItem('parqueadero_tema') === 'dark') {
+    document.documentElement.classList.add('dark');
+    document.getElementById('theme-toggle').innerHTML = '&#x2600;';
+  }
+
+  // Reloj y fecha en vivo
+  function actualizarReloj() {
+    var now = new Date();
+    var h = now.getHours() % 12 || 12;
+    var m = String(now.getMinutes()).padStart(2, '0');
+    var s = String(now.getSeconds()).padStart(2, '0');
+    var ampm = now.getHours() >= 12 ? 'PM' : 'AM';
+    document.getElementById('clock').textContent = h + ':' + m + ':' + s + ' ' + ampm;
+  }
+
+  function actualizarFecha() {
+    var now = new Date();
+    var dias = ['Dom','Lun','Mar','Mie','Jue','Vie','Sab'];
+    var meses = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+    document.getElementById('header-fecha').textContent =
+      dias[now.getDay()] + ' ' + now.getDate() + ' ' + meses[now.getMonth()] + ' ' + now.getFullYear();
+  }
+
+  function actualizarContadorActivos() {
+    var registros = getRegistros();
+    var hoy = new Date().toDateString();
+    var count = registros.filter(function(r) { return new Date(r.fecha).toDateString() === hoy; }).length;
+    document.getElementById('active-count').textContent = count;
+  }
+
+  actualizarReloj();
+  actualizarFecha();
+  actualizarContadorActivos();
+  setInterval(actualizarReloj, 1000);
+
+  // Formato automatico de placa: ABC 123 o ABC 12D
+  function formatPlaca(input) {
+    var val = input.value.replace(/[^A-Za-z0-9]/g, '').toUpperCase();
+    if (val.length > 3) {
+      val = val.substring(0, 3) + ' ' + val.substring(3);
+    }
+    input.value = val;
+    var raw = val.replace(/\s/g, '');
+    var esValida = raw.length >= 5 && raw.length <= 7 && /^[A-Z]{3}[0-9A-Z]{2,4}$/.test(raw);
+    validarCampo(input, esValida);
+  }
+
+  // Validacion visual en tiempo real
+  function validarCampo(input, esValido) {
+    var iconEl = document.getElementById(input.id + '-icon');
+    if (input.value.trim() === '') {
+      input.classList.remove('valid', 'invalid');
+      if (iconEl) { iconEl.classList.remove('show'); iconEl.textContent = ''; }
+      return;
+    }
+    if (esValido) {
+      input.classList.remove('invalid');
+      input.classList.add('valid');
+      if (iconEl) { iconEl.textContent = '✓'; iconEl.style.color = '#4caf50'; iconEl.classList.add('show'); }
+    } else {
+      input.classList.remove('valid');
+      input.classList.add('invalid');
+      if (iconEl) { iconEl.textContent = '✗'; iconEl.style.color = '#ff5252'; iconEl.classList.add('show'); }
+    }
+  }
+
+  // Autocompletado por placa
+  function buscarPlaca(val) {
+    var raw = val.replace(/\s/g, '').toUpperCase();
+    if (raw.length < 4) {
+      document.getElementById('auto-badge').classList.remove('show');
+      return;
+    }
+    var registros = getRegistros();
+    var encontrado = null;
+    for (var i = 0; i < registros.length; i++) {
+      if (registros[i].placa.replace(/\s/g, '') === raw) {
+        encontrado = registros[i];
+        break;
+      }
+    }
+    if (encontrado) {
+      document.getElementById('nombre').value = encontrado.nombre;
+      document.getElementById('celular').value = encontrado.celular;
+      validarCampo(document.getElementById('nombre'), true);
+      validarCampo(document.getElementById('celular'), true);
+      document.getElementById('auto-badge').classList.add('show');
+      // Seleccionar tipo de vehiculo
+      var tipos = document.querySelectorAll('.vehicle-type');
+      for (var j = 0; j < tipos.length; j++) {
+        tipos[j].classList.remove('selected');
+        if (tipos[j].getAttribute('data-type') === encontrado.tipo) {
+          tipos[j].classList.add('selected');
+          vehiculoSeleccionado = encontrado.tipo;
+        }
+      }
+    } else {
+      document.getElementById('auto-badge').classList.remove('show');
+    }
+  }
+
+  // Toast notifications
+  function showToast(msg, tipo) {
+    const toast = document.getElementById('toast');
+    toast.textContent = msg;
+    toast.className = 'toast ' + (tipo || 'success');
+    toast.classList.add('show');
+    setTimeout(() => toast.classList.remove('show'), 3000);
+  }
+
+  function getRegistros() {
+    return registrosCache;
+  }
+
+  function saveRegistros(registros) {
+    registrosCache = registros;
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(registros));
+  }
+
+  // Cargar registros desde Firebase al iniciar
+  function cargarDesdeFirebase() {
+    registrosRef.orderBy('fecha', 'desc').get().then(function(snapshot) {
+      var registros = [];
+      snapshot.forEach(function(doc) {
+        registros.push(doc.data());
+      });
+      registrosCache = registros;
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(registros));
+      actualizarContadorActivos();
+      renderHistorial();
+      renderEstadisticas();
+      showToast('Datos sincronizados con la nube', 'success');
+    }).catch(function(err) {
+      console.log('Firebase no disponible, usando datos locales:', err);
+      try {
+        registrosCache = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+      } catch(e) { registrosCache = []; }
+    });
+  }
+
+  // Cargar cache local primero (rapido)
+  try {
+    registrosCache = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+  } catch(e) { registrosCache = []; }
+
+  // Luego sincronizar con Firebase
+  cargarDesdeFirebase();
+
+  function selectVehicle(el, tipo) {
+    document.querySelectorAll('.vehicle-type').forEach(v => v.classList.remove('selected'));
+    el.classList.add('selected');
+    vehiculoSeleccionado = tipo;
+  }
+
+  function showSection(section, btn) {
+    document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+    document.getElementById('section-' + section).classList.add('active');
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    if (btn) btn.classList.add('active');
+    if (section === 'history') renderHistorial();
+    if (section === 'stats') renderEstadisticas();
+  }
+
+  function formatFecha(date) {
+    const dias = ['Domingo','Lunes','Martes','Miercoles','Jueves','Viernes','Sabado'];
+    const meses = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+    return dias[date.getDay()] + ', ' + date.getDate() + ' de ' + meses[date.getMonth()] + ' de ' + date.getFullYear();
+  }
+
+  function formatHora(date) {
+    let h = date.getHours();
+    let m = date.getMinutes();
+    let s = date.getSeconds();
+    const ampm = h >= 12 ? 'PM' : 'AM';
+    h = h % 12 || 12;
+    return h + ':' + String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0') + ' ' + ampm;
+  }
+
+  function getVehicleIcon(tipo) {
+    if (tipo === 'Carro') return '\u{1F697}';
+    if (tipo === 'Moto') return '\u{1F3CD}';
+    if (tipo === 'Camion') return '\u{1F69A}';
+    return '\u{1F697}';
+  }
+
+  function generarRecibo(registro) {
+    const fecha = new Date(registro.fecha);
+    return '<div class="receipt-header">' +
+      'PARQUEADERO<br>' +
+      '<span style="font-size:0.75rem;font-weight:normal;">Comprobante de Ingreso</span>' +
+      '</div>' +
+      '<div class="receipt-line">' +
+      '<span class="label">Fecha:</span>' +
+      '<span>' + formatFecha(fecha) + '</span>' +
+      '</div>' +
+      '<div class="receipt-line">' +
+      '<span class="label">Hora de Ingreso:</span>' +
+      '<span>' + formatHora(fecha) + '</span>' +
+      '</div>' +
+      '<div class="receipt-divider"></div>' +
+      '<div class="receipt-line">' +
+      '<span class="label">Nombre:</span>' +
+      '<span>' + registro.nombre + '</span>' +
+      '</div>' +
+      '<div class="receipt-line">' +
+      '<span class="label">Celular:</span>' +
+      '<span>' + registro.celular + '</span>' +
+      '</div>' +
+      '<div class="receipt-line">' +
+      '<span class="label">Placa:</span>' +
+      '<span>' + registro.placa + '</span>' +
+      '</div>' +
+      '<div class="receipt-line">' +
+      '<span class="label">Vehiculo:</span>' +
+      '<span>' + getVehicleIcon(registro.tipo) + ' ' + registro.tipo + '</span>' +
+      '</div>' +
+      '<div class="receipt-divider"></div>' +
+      '<div class="terms">' +
+      '<h4>TERMINOS Y CONDICIONES</h4>' +
+      '<p>1. El ingreso al parqueadero implica la aceptacion de estos terminos.</p>' +
+      '<p>2. El usuario debe conservar su comprobante de ingreso y realizar el pago correspondiente.</p>' +
+      '<p>3. No nos hacemos responsables por objetos de valor dejados dentro del vehiculo.</p>' +
+      '<p>4. Cualquier dano o novedad debera reportarse inmediatamente antes de retirar el vehiculo.</p>' +
+      '<p>5. El usuario es responsable de respetar las normas de circulacion y senalizacion.</p>' +
+      '<p>6. No se permite realizar reparaciones, almacenar sustancias peligrosas ni actividades no autorizadas.</p>' +
+      '<p>7. El vehiculo debera ser retirado dentro del horario establecido.</p>' +
+      '<p>8. La administracion se reserva el derecho de admision y podra solicitar el retiro de vehiculos que incumplan estas condiciones.</p>' +
+      '</div>';
+  }
+
+  function registrarIngreso() {
+    const placa = document.getElementById('placa').value.trim();
+    const nombre = document.getElementById('nombre').value.trim();
+    const celular = document.getElementById('celular').value.trim();
+
+    if (!placa) { showToast('Ingrese la placa del vehiculo', 'error'); return; }
+    if (!nombre) { showToast('Ingrese el nombre', 'error'); return; }
+    if (!celular) { showToast('Ingrese el celular', 'error'); return; }
+
+    const registro = {
+      id: Date.now(),
+      placa: placa,
+      nombre: nombre,
+      celular: celular,
+      tipo: vehiculoSeleccionado,
+      fecha: new Date().toISOString()
+    };
+
+    const registros = getRegistros();
+    registros.unshift(registro);
+    saveRegistros(registros);
+
+    // Guardar en Firebase
+    registrosRef.doc(String(registro.id)).set(registro).catch(function(err) {
+      console.log('Error guardando en Firebase:', err);
+    });
+
+    ultimoRegistro = registro;
+    document.getElementById('receipt-preview').innerHTML = generarRecibo(registro);
+    document.getElementById('form-card').style.display = 'none';
+    document.getElementById('success-card').style.display = 'block';
+    document.getElementById('success-card').style.animation = 'none';
+    document.getElementById('success-card').offsetHeight;
+    document.getElementById('success-card').style.animation = 'fadeIn 0.4s ease-out';
+
+    showToast('Vehiculo ' + placa + ' registrado correctamente');
+    actualizarContadorActivos();
+  }
+
+  function imprimirRecibo() {
+    window.print();
+  }
+
+  function compartirWhatsApp() {
+    if (!ultimoRegistro) { showToast('No hay recibo para compartir', 'error'); return; }
+    var r = ultimoRegistro;
+    var fecha = new Date(r.fecha);
+    var msg = '*PARQUEADERO - Comprobante de Ingreso*\n\n' +
+      'Fecha: ' + formatFecha(fecha) + '\n' +
+      'Hora de Ingreso: ' + formatHora(fecha) + '\n\n' +
+      'Nombre: ' + r.nombre + '\n' +
+      'Celular: ' + r.celular + '\n' +
+      'Placa: ' + r.placa + '\n' +
+      'Vehiculo: ' + r.tipo + '\n\n' +
+      '--- TERMINOS Y CONDICIONES ---\n' +
+      '1. El ingreso al parqueadero implica la aceptacion de estos terminos.\n' +
+      '2. Conserve su comprobante y realice el pago correspondiente.\n' +
+      '3. No nos hacemos responsables por objetos de valor dejados dentro del vehiculo.\n' +
+      '4. Reporte cualquier dano o novedad antes de retirar el vehiculo.\n' +
+      '5. Respete las normas de circulacion y senalizacion.\n' +
+      '6. No se permiten reparaciones ni sustancias peligrosas.\n' +
+      '7. Retire el vehiculo dentro del horario establecido.\n' +
+      '8. La administracion se reserva el derecho de admision.';
+
+    var celular = r.celular.replace(/\s/g, '');
+    if (celular.length === 10) celular = '57' + celular;
+    var url = 'https://wa.me/' + celular + '?text=' + encodeURIComponent(msg);
+    window.open(url, '_blank');
+  }
+
+  function nuevoRegistro() {
+    document.getElementById('form-card').style.display = 'block';
+    document.getElementById('success-card').style.display = 'none';
+    var campos = ['placa', 'nombre', 'celular'];
+    for (var i = 0; i < campos.length; i++) {
+      var el = document.getElementById(campos[i]);
+      el.value = '';
+      el.classList.remove('valid', 'invalid');
+      var icon = document.getElementById(campos[i] + '-icon');
+      if (icon) { icon.classList.remove('show'); icon.textContent = ''; }
+    }
+    document.getElementById('auto-badge').classList.remove('show');
+    document.getElementById('placa').focus();
+  }
+
+  function renderHistorial() {
+    var registros = getRegistros();
+    var hoy = new Date().toDateString();
+    var registrosHoy = registros.filter(function(r) { return new Date(r.fecha).toDateString() === hoy; });
+
+    document.getElementById('stat-total').textContent = registrosHoy.length;
+    document.getElementById('stat-carros').textContent = registrosHoy.filter(function(r) { return r.tipo === 'Carro'; }).length;
+    document.getElementById('stat-motos').textContent = registrosHoy.filter(function(r) { return r.tipo === 'Moto'; }).length;
+    document.getElementById('stat-camiones').textContent = registrosHoy.filter(function(r) { return r.tipo === 'Camion'; }).length;
+
+    // Aplicar filtro por tipo
+    var filtrados = registrosHoy;
+    if (filtroActivo !== 'Todos') {
+      filtrados = registrosHoy.filter(function(r) { return r.tipo === filtroActivo; });
+    }
+
+    // Aplicar busqueda
+    var searchInput = document.getElementById('search-input');
+    var busqueda = searchInput ? searchInput.value.trim().toUpperCase() : '';
+    if (busqueda.length > 0) {
+      filtrados = filtrados.filter(function(r) {
+        return r.placa.toUpperCase().indexOf(busqueda) !== -1 ||
+               r.nombre.toUpperCase().indexOf(busqueda) !== -1;
+      });
+    }
+
+    var list = document.getElementById('history-list');
+
+    if (registrosHoy.length === 0) {
+      list.innerHTML = '<div class="empty-state"><div class="empty-icon">\u{1F697}</div><p>No hay registros hoy</p></div>';
+      return;
+    }
+
+    if (filtrados.length === 0) {
+      list.innerHTML = '<div class="empty-state"><div class="empty-icon">\u{1F50D}</div><p>No se encontraron resultados</p></div>';
+      return;
+    }
+
+    var html = '';
+    for (var i = 0; i < filtrados.length; i++) {
+      var r = filtrados[i];
+      var fecha = new Date(r.fecha);
+      html += '<div class="history-item">' +
+        '<div class="h-icon">' + getVehicleIcon(r.tipo) + '</div>' +
+        '<div class="h-info">' +
+        '<div class="h-plate">' + r.placa + '</div>' +
+        '<div class="h-name">' + r.nombre + ' - ' + r.celular + '</div>' +
+        '<div class="h-time">' + formatHora(fecha) + '</div>' +
+        '</div>' +
+        '<div class="h-actions">' +
+        '<button class="btn-small btn-view" onclick="verRecibo(' + r.id + ')">Ver</button>' +
+        '<button class="btn-small btn-delete" onclick="eliminarRegistro(' + r.id + ')">X</button>' +
+        '</div>' +
+        '</div>';
+    }
+    list.innerHTML = html;
+  }
+
+  function verRecibo(id) {
+    var registros = getRegistros();
+    var registro = registros.find(function(r) { return r.id === id; });
+    if (!registro) return;
+    document.getElementById('modal-receipt-content').innerHTML = generarRecibo(registro);
+    document.getElementById('modal-receipt').classList.add('active');
+  }
+
+  function imprimirReciboModal() {
+    var contenido = document.getElementById('modal-receipt-content').innerHTML;
+    document.getElementById('receipt-preview').innerHTML = contenido;
+    document.getElementById('form-card').style.display = 'none';
+    document.getElementById('success-card').style.display = 'block';
+    cerrarModal();
+    showSection('register', document.querySelectorAll('.tab')[0]);
+    setTimeout(function() { window.print(); }, 300);
+  }
+
+  function cerrarModal() {
+    document.getElementById('modal-receipt').classList.remove('active');
+  }
+
+  function eliminarRegistro(id) {
+    if (!confirm('Eliminar este registro?')) return;
+    var registros = getRegistros().filter(function(r) { return r.id !== id; });
+    saveRegistros(registros);
+
+    // Eliminar de Firebase
+    registrosRef.doc(String(id)).delete().catch(function(err) {
+      console.log('Error eliminando de Firebase:', err);
+    });
+
+    renderHistorial();
+    actualizarContadorActivos();
+    showToast('Registro eliminado');
+  }
+
+  function renderEstadisticas() {
+    var registros = getRegistros();
+    var now = new Date();
+    var hoy = now.toDateString();
+
+    // Vehiculos por hora (hoy)
+    var porHora = {};
+    for (var h = 6; h <= 22; h++) porHora[h] = 0;
+    var registrosHoy = registros.filter(function(r) { return new Date(r.fecha).toDateString() === hoy; });
+    for (var i = 0; i < registrosHoy.length; i++) {
+      var hora = new Date(registrosHoy[i].fecha).getHours();
+      if (porHora[hora] === undefined) porHora[hora] = 0;
+      porHora[hora]++;
+    }
+
+    var maxHora = 1;
+    for (var k in porHora) { if (porHora[k] > maxHora) maxHora = porHora[k]; }
+
+    var chartHtml = '';
+    for (var h = 6; h <= 22; h++) {
+      var val = porHora[h] || 0;
+      var pct = Math.max((val / maxHora) * 100, 2);
+      var ampm = h >= 12 ? 'p' : 'a';
+      var display = (h % 12 || 12) + ampm;
+      chartHtml += '<div class="chart-bar-wrapper">' +
+        '<div class="chart-bar-value">' + (val > 0 ? val : '') + '</div>' +
+        '<div class="chart-bar" style="height:' + pct + '%"></div>' +
+        '<div class="chart-bar-label">' + display + '</div>' +
+        '</div>';
+    }
+    document.getElementById('chart-horas').innerHTML = chartHtml;
+
+    // Resumen semanal/mensual/total
+    var inicioSemana = new Date(now);
+    inicioSemana.setDate(now.getDate() - now.getDay());
+    inicioSemana.setHours(0, 0, 0, 0);
+
+    var inicioMes = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    var semana = 0, mes = 0;
+    for (var i = 0; i < registros.length; i++) {
+      var f = new Date(registros[i].fecha);
+      if (f >= inicioSemana) semana++;
+      if (f >= inicioMes) mes++;
+    }
+
+    document.getElementById('stat-semana').textContent = semana;
+    document.getElementById('stat-mes').textContent = mes;
+    document.getElementById('stat-todos').textContent = registros.length;
+
+    // Distribucion por tipo (todos los registros)
+    var tipos = { Carro: 0, Moto: 0, Camion: 0 };
+    for (var i = 0; i < registros.length; i++) {
+      if (tipos[registros[i].tipo] !== undefined) tipos[registros[i].tipo]++;
+    }
+    var maxTipo = Math.max(tipos.Carro, tipos.Moto, tipos.Camion, 1);
+
+    var tiposHtml = '';
+    var tipoData = [
+      { nombre: 'Carro', icon: '\u{1F697}', count: tipos.Carro, clase: 'tipo-carro' },
+      { nombre: 'Moto', icon: '\u{1F3CD}', count: tipos.Moto, clase: 'tipo-moto' },
+      { nombre: 'Camion', icon: '\u{1F69A}', count: tipos.Camion, clase: 'tipo-camion' }
+    ];
+    for (var i = 0; i < tipoData.length; i++) {
+      var t = tipoData[i];
+      var pct = Math.max((t.count / maxTipo) * 100, 5);
+      tiposHtml += '<div class="tipo-row">' +
+        '<div class="tipo-label">' + t.icon + ' ' + t.nombre + '</div>' +
+        '<div class="tipo-bar-bg"><div class="tipo-bar-fill ' + t.clase + '" style="width:' + pct + '%">' + t.count + '</div></div>' +
+        '</div>';
+    }
+    document.getElementById('chart-tipos').innerHTML = tiposHtml;
+
+    // Ultimos 7 dias
+    var dias7 = [];
+    var diasNombres = ['Dom','Lun','Mar','Mie','Jue','Vie','Sab'];
+    for (var d = 6; d >= 0; d--) {
+      var dia = new Date(now);
+      dia.setDate(now.getDate() - d);
+      var diaStr = dia.toDateString();
+      var count = registros.filter(function(r) { return new Date(r.fecha).toDateString() === diaStr; }).length;
+      dias7.push({ label: diasNombres[dia.getDay()], num: dia.getDate(), count: count });
+    }
+
+    var max7 = 1;
+    for (var i = 0; i < dias7.length; i++) { if (dias7[i].count > max7) max7 = dias7[i].count; }
+
+    var semanaHtml = '';
+    for (var i = 0; i < dias7.length; i++) {
+      var d = dias7[i];
+      var pct = Math.max((d.count / max7) * 100, 2);
+      var isToday = i === 6;
+      var barStyle = isToday ? 'background:linear-gradient(180deg,#56ab2f,#a8e063)' : '';
+      semanaHtml += '<div class="chart-bar-wrapper">' +
+        '<div class="chart-bar-value">' + (d.count > 0 ? d.count : '') + '</div>' +
+        '<div class="chart-bar" style="height:' + pct + '%;' + barStyle + '"></div>' +
+        '<div class="chart-bar-label">' + d.label + ' ' + d.num + '</div>' +
+        '</div>';
+    }
+    document.getElementById('chart-semana').innerHTML = semanaHtml;
+  }
+
+  function exportarCSV() {
+    var registros = getRegistros();
+    var hoy = new Date().toDateString();
+    var registrosHoy = registros.filter(function(r) { return new Date(r.fecha).toDateString() === hoy; });
+
+    if (registrosHoy.length === 0) {
+      showToast('No hay registros para exportar', 'error');
+      return;
+    }
+
+    var sep = ';';
+    var csv = '﻿';
+    csv += 'Fecha' + sep + 'Hora' + sep + 'Placa' + sep + 'Tipo' + sep + 'Nombre' + sep + 'Celular\n';
+
+    for (var i = 0; i < registrosHoy.length; i++) {
+      var r = registrosHoy[i];
+      var fecha = new Date(r.fecha);
+      csv += formatFecha(fecha) + sep +
+             formatHora(fecha) + sep +
+             r.placa + sep +
+             r.tipo + sep +
+             r.nombre + sep +
+             r.celular + '\n';
+    }
+
+    var blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    var url = URL.createObjectURL(blob);
+    var link = document.createElement('a');
+    var now = new Date();
+    var fileName = 'parqueadero_' + now.getFullYear() +
+      String(now.getMonth() + 1).padStart(2, '0') +
+      String(now.getDate()).padStart(2, '0') + '.csv';
+    link.setAttribute('href', url);
+    link.setAttribute('download', fileName);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    showToast('Archivo ' + fileName + ' descargado');
+  }
+
+  function confirmarLimpiar() {
+    if (!confirm('Seguro que desea limpiar todo el historial del dia?')) return;
+    var registros = getRegistros();
+    var hoy = new Date().toDateString();
+    var registrosHoyIds = registros.filter(function(r) { return new Date(r.fecha).toDateString() === hoy; }).map(function(r) { return r.id; });
+    var filtrados = registros.filter(function(r) { return new Date(r.fecha).toDateString() !== hoy; });
+    saveRegistros(filtrados);
+
+    // Eliminar de Firebase
+    registrosHoyIds.forEach(function(id) {
+      registrosRef.doc(String(id)).delete().catch(function(err) {
+        console.log('Error eliminando de Firebase:', err);
+      });
+    });
+
+    renderHistorial();
+    actualizarContadorActivos();
+    showToast('Historial del dia limpiado');
+  }
+
+  document.getElementById('modal-receipt').addEventListener('click', function(e) {
+    if (e.target === this) cerrarModal();
+  });
+
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') cerrarModal();
+  });
+</script>
+
+</body>
+</html>
