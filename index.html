@@ -1091,7 +1091,8 @@
       </div>
     </div>
 
-    <button class="btn btn-export no-print" onclick="exportarCSV()">Exportar a Excel / CSV</button>
+    <button class="btn btn-export no-print" onclick="exportarCSV(true)">Exportar Hoy</button>
+    <button class="btn btn-export no-print" onclick="exportarCSV(false)" style="background:linear-gradient(135deg,#667eea,#764ba2);margin-top:6px;">Exportar Todo el Historial</button>
     <button class="btn btn-danger no-print" onclick="confirmarLimpiar()">Limpiar Historial del Dia</button>
   </div>
 
@@ -1156,6 +1157,9 @@
 
   firebase.initializeApp(firebaseConfig);
   const db = firebase.firestore();
+  db.enablePersistence({ synchronizeTabs: true }).catch(function(err) {
+    console.log('Persistencia offline no disponible:', err.code);
+  });
   const registrosRef = db.collection('registros');
 
   let vehiculoSeleccionado = 'Carro';
@@ -1163,6 +1167,12 @@
   var ultimoRegistro = null;
   const STORAGE_KEY = 'parqueadero_registros';
   var registrosCache = [];
+  var firebaseConectado = false;
+
+  // Generar ID unico sin colisiones
+  function generarId() {
+    return Date.now().toString(36) + Math.random().toString(36).substr(2, 9);
+  }
 
   function setFilter(tipo, btn) {
     filtroActivo = tipo;
@@ -1294,30 +1304,9 @@
     return registrosCache;
   }
 
-  function saveRegistros(registros) {
+  function saveRegistrosLocal(registros) {
     registrosCache = registros;
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(registros));
-  }
-
-  // Cargar registros desde Firebase al iniciar
-  function cargarDesdeFirebase() {
-    registrosRef.orderBy('fecha', 'desc').get().then(function(snapshot) {
-      var registros = [];
-      snapshot.forEach(function(doc) {
-        registros.push(doc.data());
-      });
-      registrosCache = registros;
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(registros));
-      actualizarContadorActivos();
-      renderHistorial();
-      renderEstadisticas();
-      showToast('Datos sincronizados con la nube', 'success');
-    }).catch(function(err) {
-      console.log('Firebase no disponible, usando datos locales:', err);
-      try {
-        registrosCache = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
-      } catch(e) { registrosCache = []; }
-    });
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(registros)); } catch(e) {}
   }
 
   // Cargar cache local primero (rapido)
@@ -1325,8 +1314,65 @@
     registrosCache = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
   } catch(e) { registrosCache = []; }
 
-  // Luego sincronizar con Firebase
-  cargarDesdeFirebase();
+  // Listener en TIEMPO REAL - se actualiza automaticamente entre dispositivos
+  registrosRef.orderBy('fecha', 'desc').onSnapshot(function(snapshot) {
+    var registros = [];
+    snapshot.forEach(function(doc) {
+      var data = doc.data();
+      data._docId = doc.id;
+      registros.push(data);
+    });
+
+    // Deduplicar por ID
+    var vistos = {};
+    var unicos = [];
+    for (var i = 0; i < registros.length; i++) {
+      var key = registros[i].id || registros[i]._docId;
+      if (!vistos[key]) {
+        vistos[key] = true;
+        unicos.push(registros[i]);
+      }
+    }
+
+    registrosCache = unicos;
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(unicos)); } catch(e) {}
+
+    if (!firebaseConectado) {
+      firebaseConectado = true;
+      // Subir registros locales que no estan en Firebase
+      sincronizarPendientes();
+      showToast('Datos sincronizados con la nube', 'success');
+    }
+
+    actualizarContadorActivos();
+    renderHistorial();
+    renderEstadisticas();
+  }, function(err) {
+    console.log('Error en listener Firebase:', err);
+    if (!firebaseConectado) {
+      showToast('Modo offline - datos locales', 'error');
+    }
+  });
+
+  // Sincronizar registros que se hicieron offline
+  function sincronizarPendientes() {
+    var pendientes = [];
+    try { pendientes = JSON.parse(localStorage.getItem('parqueadero_pendientes')) || []; } catch(e) {}
+    if (pendientes.length === 0) return;
+
+    var subidos = 0;
+    pendientes.forEach(function(registro) {
+      registrosRef.doc(registro.id).set(registro).then(function() {
+        subidos++;
+        if (subidos === pendientes.length) {
+          localStorage.removeItem('parqueadero_pendientes');
+          showToast(subidos + ' registro(s) sincronizados', 'success');
+        }
+      }).catch(function(err) {
+        console.log('Error sincronizando pendiente:', err);
+      });
+    });
+  }
 
   function selectVehicle(el, tipo) {
     document.querySelectorAll('.vehicle-type').forEach(v => v.classList.remove('selected'));
@@ -1420,7 +1466,7 @@
     if (!celular) { showToast('Ingrese el celular', 'error'); return; }
 
     const registro = {
-      id: Date.now(),
+      id: generarId(),
       placa: placa,
       nombre: nombre,
       celular: celular,
@@ -1428,14 +1474,19 @@
       fecha: new Date().toISOString()
     };
 
-    const registros = getRegistros();
-    registros.unshift(registro);
-    saveRegistros(registros);
-
-    // Guardar en Firebase
-    registrosRef.doc(String(registro.id)).set(registro).catch(function(err) {
-      console.log('Error guardando en Firebase:', err);
+    // Guardar en Firebase (el listener onSnapshot actualiza el cache automaticamente)
+    registrosRef.doc(registro.id).set(registro).catch(function(err) {
+      console.log('Sin conexion, guardando local:', err);
+      // Guardar como pendiente para sincronizar despues
+      var pendientes = [];
+      try { pendientes = JSON.parse(localStorage.getItem('parqueadero_pendientes')) || []; } catch(e) {}
+      pendientes.push(registro);
+      localStorage.setItem('parqueadero_pendientes', JSON.stringify(pendientes));
     });
+
+    // Actualizar cache local inmediatamente para UI responsiva
+    registrosCache.unshift(registro);
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(registrosCache)); } catch(e) {}
 
     ultimoRegistro = registro;
     document.getElementById('receipt-preview').innerHTML = generarRecibo(registro);
@@ -1545,8 +1596,8 @@
         '<div class="h-time">' + formatHora(fecha) + '</div>' +
         '</div>' +
         '<div class="h-actions">' +
-        '<button class="btn-small btn-view" onclick="verRecibo(' + r.id + ')">Ver</button>' +
-        '<button class="btn-small btn-delete" onclick="eliminarRegistro(' + r.id + ')">X</button>' +
+        '<button class="btn-small btn-view" onclick="verRecibo(\'' + r.id + '\')">Ver</button>' +
+        '<button class="btn-small btn-delete" onclick="eliminarRegistro(\'' + r.id + '\')">X</button>' +
         '</div>' +
         '</div>';
     }
@@ -1577,13 +1628,15 @@
 
   function eliminarRegistro(id) {
     if (!confirm('Eliminar este registro?')) return;
-    var registros = getRegistros().filter(function(r) { return r.id !== id; });
-    saveRegistros(registros);
 
-    // Eliminar de Firebase
+    // Eliminar de Firebase (el listener actualiza automaticamente)
     registrosRef.doc(String(id)).delete().catch(function(err) {
       console.log('Error eliminando de Firebase:', err);
     });
+
+    // Actualizar cache local inmediatamente
+    registrosCache = registrosCache.filter(function(r) { return r.id !== id; });
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(registrosCache)); } catch(e) {}
 
     renderHistorial();
     actualizarContadorActivos();
@@ -1692,24 +1745,34 @@
     document.getElementById('chart-semana').innerHTML = semanaHtml;
   }
 
-  function exportarCSV() {
+  function exportarCSV(soloHoy) {
     var registros = getRegistros();
-    var hoy = new Date().toDateString();
-    var registrosHoy = registros.filter(function(r) { return new Date(r.fecha).toDateString() === hoy; });
+    var datos;
+    var sufijo;
 
-    if (registrosHoy.length === 0) {
+    if (soloHoy !== false) {
+      var hoy = new Date().toDateString();
+      datos = registros.filter(function(r) { return new Date(r.fecha).toDateString() === hoy; });
+      sufijo = '_hoy_';
+    } else {
+      datos = registros;
+      sufijo = '_completo_';
+    }
+
+    if (datos.length === 0) {
       showToast('No hay registros para exportar', 'error');
       return;
     }
 
     var sep = ';';
     var csv = '﻿';
-    csv += 'Fecha' + sep + 'Hora' + sep + 'Placa' + sep + 'Tipo' + sep + 'Nombre' + sep + 'Celular\n';
+    csv += 'ID' + sep + 'Fecha' + sep + 'Hora' + sep + 'Placa' + sep + 'Tipo' + sep + 'Nombre' + sep + 'Celular\n';
 
-    for (var i = 0; i < registrosHoy.length; i++) {
-      var r = registrosHoy[i];
+    for (var i = 0; i < datos.length; i++) {
+      var r = datos[i];
       var fecha = new Date(r.fecha);
-      csv += formatFecha(fecha) + sep +
+      csv += r.id + sep +
+             formatFecha(fecha) + sep +
              formatHora(fecha) + sep +
              r.placa + sep +
              r.tipo + sep +
@@ -1721,7 +1784,7 @@
     var url = URL.createObjectURL(blob);
     var link = document.createElement('a');
     var now = new Date();
-    var fileName = 'parqueadero_' + now.getFullYear() +
+    var fileName = 'parqueadero' + sufijo + now.getFullYear() +
       String(now.getMonth() + 1).padStart(2, '0') +
       String(now.getDate()).padStart(2, '0') + '.csv';
     link.setAttribute('href', url);
@@ -1730,23 +1793,26 @@
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
-    showToast('Archivo ' + fileName + ' descargado');
+    showToast(datos.length + ' registros exportados - ' + fileName);
   }
 
   function confirmarLimpiar() {
     if (!confirm('Seguro que desea limpiar todo el historial del dia?')) return;
     var registros = getRegistros();
     var hoy = new Date().toDateString();
-    var registrosHoyIds = registros.filter(function(r) { return new Date(r.fecha).toDateString() === hoy; }).map(function(r) { return r.id; });
+    var registrosHoy = registros.filter(function(r) { return new Date(r.fecha).toDateString() === hoy; });
     var filtrados = registros.filter(function(r) { return new Date(r.fecha).toDateString() !== hoy; });
-    saveRegistros(filtrados);
 
     // Eliminar de Firebase
-    registrosHoyIds.forEach(function(id) {
-      registrosRef.doc(String(id)).delete().catch(function(err) {
+    registrosHoy.forEach(function(r) {
+      registrosRef.doc(String(r.id)).delete().catch(function(err) {
         console.log('Error eliminando de Firebase:', err);
       });
     });
+
+    // Actualizar cache local
+    registrosCache = filtrados;
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(filtrados)); } catch(e) {}
 
     renderHistorial();
     actualizarContadorActivos();
