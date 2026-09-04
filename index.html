@@ -1500,192 +1500,103 @@
     actualizarContadorActivos();
   }
 
-  // === IMPRESION BLUETOOTH DIRECTA (ESC/POS) ===
-  var dispositivoBT = null;
-  var caracteristicaBT = null;
+  // === IMPRESION TERMICA (RawBT / window.print) ===
 
-  // UUIDs comunes para impresoras termicas Bluetooth
-  var PRINTER_SERVICE_UUIDS = [
-    '000018f0-0000-1000-8000-00805f9b34fb',
-    '49535343-fe7d-4ae5-8fa9-9fafd205e455',
-    '0000ff00-0000-1000-8000-00805f9b34fb',
-    'e7810a71-73ae-499d-8c15-faa9aef0c3f2'
-  ];
-
-  var PRINTER_CHAR_UUIDS = [
-    '00002af1-0000-1000-8000-00805f9b34fb',
-    '49535343-8841-43f4-a8d4-ecbe34729bb3',
-    '0000ff02-0000-1000-8000-00805f9b34fb',
-    'bef8d6c9-9c21-4c9e-b632-bd58c1009f9f'
-  ];
-
-  async function conectarImpresora() {
-    try {
-      showToast('Buscando impresora...', 'success');
-      dispositivoBT = await navigator.bluetooth.requestDevice({
-        acceptAllDevices: true,
-        optionalServices: PRINTER_SERVICE_UUIDS
-      });
-
-      showToast('Conectando a ' + dispositivoBT.name + '...', 'success');
-      var server = await dispositivoBT.gatt.connect();
-
-      // Buscar el servicio y caracteristica correctos
-      var services = await server.getPrimaryServices();
-      for (var s = 0; s < services.length; s++) {
-        try {
-          var chars = await services[s].getCharacteristics();
-          for (var c = 0; c < chars.length; c++) {
-            if (chars[c].properties.write || chars[c].properties.writeWithoutResponse) {
-              caracteristicaBT = chars[c];
-              showToast('Impresora ' + dispositivoBT.name + ' conectada', 'success');
-              return true;
-            }
-          }
-        } catch(e) { continue; }
-      }
-
-      showToast('No se encontro canal de escritura', 'error');
-      return false;
-    } catch(err) {
-      if (err.name === 'NotFoundError') {
-        showToast('No se selecciono impresora', 'error');
-      } else {
-        console.log('Error BT:', err);
-        showToast('Error: ' + err.message, 'error');
-      }
-      return false;
-    }
-  }
-
-  // Enviar datos en chunks (las impresoras BT tienen limite de 20-512 bytes)
-  async function enviarDatosBT(datos) {
-    var CHUNK = 100;
-    for (var i = 0; i < datos.length; i += CHUNK) {
-      var chunk = datos.slice(i, i + CHUNK);
-      if (caracteristicaBT.properties.writeWithoutResponse) {
-        await caracteristicaBT.writeValueWithoutResponse(chunk);
-      } else {
-        await caracteristicaBT.writeValue(chunk);
-      }
-      await new Promise(function(r) { setTimeout(r, 50); });
-    }
-  }
-
-  // Generar comandos ESC/POS para el recibo
+  // Generar comandos ESC/POS como bytes
   function generarESCPOS(registro) {
     var fecha = new Date(registro.fecha);
-    var encoder = new TextEncoder();
     var cmds = [];
 
+    function addBytes(arr) { cmds.push(arr); }
+    function addText(txt) {
+      for (var i = 0; i < txt.length; i++) {
+        var c = txt.charCodeAt(i);
+        cmds.push([c > 127 ? 63 : c]); // reemplazar caracteres especiales con ?
+      }
+    }
+
     // Inicializar impresora
-    cmds.push(new Uint8Array([0x1B, 0x40]));
-    // Codificacion latina
-    cmds.push(new Uint8Array([0x1B, 0x74, 0x10]));
-
-    // === ENCABEZADO ===
-    // Centrar + Negrita + Tamaño doble
-    cmds.push(new Uint8Array([0x1B, 0x61, 0x01]));
-    cmds.push(new Uint8Array([0x1B, 0x45, 0x01]));
-    cmds.push(new Uint8Array([0x1D, 0x21, 0x11]));
-    cmds.push(encoder.encode('PARQUEADERO\n'));
+    addBytes([0x1B, 0x40]);
+    // Centrar + Negrita + Doble tamaño
+    addBytes([0x1B, 0x61, 0x01]);
+    addBytes([0x1B, 0x45, 0x01]);
+    addBytes([0x1D, 0x21, 0x11]);
+    addText('PARQUEADERO\n');
     // Tamaño normal
-    cmds.push(new Uint8Array([0x1D, 0x21, 0x00]));
-    cmds.push(encoder.encode('Comprobante de Ingreso\n'));
-    cmds.push(new Uint8Array([0x1B, 0x45, 0x00]));
+    addBytes([0x1D, 0x21, 0x00]);
+    addText('Comprobante de Ingreso\n');
+    addBytes([0x1B, 0x45, 0x00]);
+    addText('--------------------------------\n');
 
-    // Linea separadora
-    cmds.push(encoder.encode('--------------------------------\n'));
+    // Izquierda
+    addBytes([0x1B, 0x61, 0x00]);
+    addText('Fecha: ' + formatFecha(fecha) + '\n');
+    addText('Hora:  ' + formatHora(fecha) + '\n');
+    addText('--------------------------------\n');
+    addText('Nombre:   ' + registro.nombre + '\n');
+    addText('Celular:  ' + registro.celular + '\n');
+    addText('Placa:    ' + registro.placa + '\n');
+    addText('Vehiculo: ' + registro.tipo + '\n');
+    addText('--------------------------------\n');
 
-    // === DATOS ===
-    // Alinear izquierda
-    cmds.push(new Uint8Array([0x1B, 0x61, 0x00]));
+    // Terminos
+    addBytes([0x1B, 0x45, 0x01]);
+    addText('TERMINOS Y CONDICIONES\n');
+    addBytes([0x1B, 0x45, 0x00]);
+    addText('1.Ingreso implica aceptacion.\n');
+    addText('2.Conserve su comprobante.\n');
+    addText('3.No responsables por objetos.\n');
+    addText('4.Reporte danos antes de salir.\n');
+    addText('5.Respete normas circulacion.\n');
+    addText('6.No reparaciones/sust.peligr.\n');
+    addText('7.Retire en horario establecido\n');
+    addText('8.Reserva derecho de admision.\n');
+    addText('--------------------------------\n');
 
-    cmds.push(encoder.encode('Fecha: ' + formatFecha(fecha) + '\n'));
-    cmds.push(encoder.encode('Hora:  ' + formatHora(fecha) + '\n'));
-    cmds.push(encoder.encode('--------------------------------\n'));
-    cmds.push(encoder.encode('Nombre:   ' + registro.nombre + '\n'));
-    cmds.push(encoder.encode('Celular:  ' + registro.celular + '\n'));
-    cmds.push(encoder.encode('Placa:    ' + registro.placa + '\n'));
-    cmds.push(encoder.encode('Vehiculo: ' + registro.tipo + '\n'));
-    cmds.push(encoder.encode('--------------------------------\n'));
-
-    // === TERMINOS ===
-    // Letra pequeña
-    cmds.push(new Uint8Array([0x1B, 0x45, 0x01]));
-    cmds.push(encoder.encode('TERMINOS Y CONDICIONES\n'));
-    cmds.push(new Uint8Array([0x1B, 0x45, 0x00]));
-
-    var terminos = [
-      '1.Ingreso implica aceptacion.',
-      '2.Conserve su comprobante.',
-      '3.No responsables por objetos.',
-      '4.Reporte danos antes de salir.',
-      '5.Respete normas de circulacion.',
-      '6.No reparaciones/sust. peligrosas.',
-      '7.Retire en horario establecido.',
-      '8.Reserva derecho de admision.'
-    ];
-    for (var i = 0; i < terminos.length; i++) {
-      cmds.push(encoder.encode(terminos[i] + '\n'));
-    }
-
-    cmds.push(encoder.encode('--------------------------------\n'));
     // Centrar
-    cmds.push(new Uint8Array([0x1B, 0x61, 0x01]));
-    cmds.push(encoder.encode('Gracias por su visita\n'));
+    addBytes([0x1B, 0x61, 0x01]);
+    addText('Gracias por su visita\n');
+    // Avanzar papel
+    addBytes([0x1B, 0x64, 0x04]);
 
-    // Avanzar papel y cortar
-    cmds.push(new Uint8Array([0x1B, 0x64, 0x04]));
-    cmds.push(new Uint8Array([0x1D, 0x56, 0x01]));
-
-    // Unir todos los comandos
-    var totalLen = 0;
-    for (var i = 0; i < cmds.length; i++) totalLen += cmds[i].length;
-    var result = new Uint8Array(totalLen);
-    var offset = 0;
+    // Unir todo en un array plano
+    var flat = [];
     for (var i = 0; i < cmds.length; i++) {
-      result.set(cmds[i], offset);
-      offset += cmds[i].length;
+      for (var j = 0; j < cmds[i].length; j++) {
+        flat.push(cmds[i][j]);
+      }
     }
-    return result;
+    return new Uint8Array(flat);
   }
 
-  async function imprimirBluetooth(registro) {
-    if (!registro) {
-      showToast('No hay recibo para imprimir', 'error');
-      return;
+  // Convertir Uint8Array a base64
+  function uint8ToBase64(uint8) {
+    var bin = '';
+    for (var i = 0; i < uint8.length; i++) {
+      bin += String.fromCharCode(uint8[i]);
     }
+    return btoa(bin);
+  }
 
-    // Verificar si Web Bluetooth esta disponible
-    if (!navigator.bluetooth) {
-      showToast('Bluetooth no disponible, usando impresion normal', 'error');
+  function imprimirConRawBT(registro) {
+    var datos = generarESCPOS(registro);
+    var base64 = uint8ToBase64(datos);
+    var url = 'rawbt:base64,' + base64;
+    window.location.href = url;
+    showToast('Enviando a impresora...', 'success');
+  }
+
+  function imprimirRecibo() {
+    if (!ultimoRegistro) {
       window.print();
       return;
     }
 
-    // Conectar si no hay conexion
-    if (!caracteristicaBT || !dispositivoBT || !dispositivoBT.gatt.connected) {
-      var ok = await conectarImpresora();
-      if (!ok) return;
-    }
+    // Detectar si es celular Android (RawBT disponible)
+    var esAndroid = /Android/i.test(navigator.userAgent);
 
-    try {
-      showToast('Imprimiendo...', 'success');
-      var datos = generarESCPOS(registro);
-      await enviarDatosBT(datos);
-      showToast('Recibo impreso correctamente', 'success');
-    } catch(err) {
-      console.log('Error imprimiendo:', err);
-      // Intentar reconectar
-      caracteristicaBT = null;
-      showToast('Error al imprimir, intente de nuevo', 'error');
-    }
-  }
-
-  function imprimirRecibo() {
-    if (ultimoRegistro) {
-      imprimirBluetooth(ultimoRegistro);
+    if (esAndroid) {
+      imprimirConRawBT(ultimoRegistro);
     } else {
       window.print();
     }
@@ -1800,20 +1711,19 @@
   }
 
   function imprimirReciboModal() {
-    // Buscar el registro que se esta viendo en el modal
     var registros = getRegistros();
     var contenido = document.getElementById('modal-receipt-content').innerHTML;
-    // Extraer placa del contenido para identificar el registro
     var match = contenido.match(/>([A-Z]{3}\s?\d{2,4}[A-Z]?)</);
     var registro = null;
     if (match) {
-      var placa = match[1];
-      registro = registros.find(function(r) { return r.placa === placa; });
+      registro = registros.find(function(r) { return r.placa === match[1]; });
     }
 
-    if (registro && navigator.bluetooth) {
+    var esAndroid = /Android/i.test(navigator.userAgent);
+
+    if (registro && esAndroid) {
       cerrarModal();
-      imprimirBluetooth(registro);
+      imprimirConRawBT(registro);
     } else {
       document.getElementById('receipt-preview').innerHTML = contenido;
       document.getElementById('form-card').style.display = 'none';
