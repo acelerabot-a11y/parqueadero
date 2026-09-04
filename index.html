@@ -1445,12 +1445,12 @@
       '<div class="receipt-divider"></div>' +
       '<div class="terms">' +
       '<h4>TERMINOS Y CONDICIONES</h4>' +
-      '<p>1. El ingreso al parqueadero implica la aceptacion de estos terminos.</p>' +
-      '<p>2. El usuario debe conservar su comprobante de ingreso y realizar el pago correspondiente.</p>' +
-      '<p>3. No nos hacemos responsables por objetos de valor dejados dentro del vehiculo.</p>' +
-      '<p>4. Cualquier dano o novedad debera reportarse inmediatamente antes de retirar el vehiculo.</p>' +
-      '<p>5. El usuario es responsable de respetar las normas de circulacion y senalizacion.</p>' +
-      '<p>6. El vehiculo debera ser retirado dentro del horario establecido.</p>' +
+      '<p>1. Conserve su comprobante y realice el pago correspondiente.</p>' +
+      '<p>2. No nos responsabilizamos por objetos dejados en el vehiculo.</p>' +
+      '<p>3. Reporte cualquier dano antes de retirar el vehiculo.</p>' +
+      '<p>4. Prohibidas reparaciones y sustancias peligrosas.</p>' +
+      '<p>5. Retire el vehiculo dentro del horario establecido.</p>' +
+      '<p>6. La administracion podra retirar vehiculos que incumplan estas condiciones.</p>' +
       '</div>';
   }
 
@@ -1541,12 +1541,14 @@
     addBytes([0x1B, 0x45, 0x01]);
     addText('TERMINOS Y CONDICIONES\n');
     addBytes([0x1B, 0x45, 0x00]);
-    addText('1.Ingreso implica aceptacion.\n');
-    addText('2.Conserve su comprobante.\n');
-    addText('3.No responsables por objetos.\n');
-    addText('4.Reporte danos antes de salir\n');
-    addText('5.Respete normas circulacion.\n');
-    addText('6.Retire en horario establecido\n');
+    addText('1.Conserve su comprobante.\n');
+    addText('2.No responsables por objetos.\n');
+    addText('3.Reporte danos antes de salir\n');
+    addText('4.Prohibidas reparaciones y\n');
+    addText('  sustancias peligrosas.\n');
+    addText('5.Retire en horario establecido\n');
+    addText('6.Podra retirar vehiculos que\n');
+    addText('  incumplan condiciones.\n');
     addText('--------------------------------\n');
 
     // Centrar
@@ -1610,12 +1612,12 @@
       'Placa: ' + r.placa + '\n' +
       'Vehiculo: ' + r.tipo + '\n\n' +
       '--- TERMINOS Y CONDICIONES ---\n' +
-      '1. El ingreso al parqueadero implica la aceptacion de estos terminos.\n' +
-      '2. Conserve su comprobante y realice el pago correspondiente.\n' +
-      '3. No nos hacemos responsables por objetos de valor dejados dentro del vehiculo.\n' +
-      '4. Reporte cualquier dano o novedad antes de retirar el vehiculo.\n' +
-      '5. Respete las normas de circulacion y senalizacion.\n' +
-      '6. Retire el vehiculo dentro del horario establecido.';
+      '1. Conserve su comprobante y realice el pago correspondiente.\n' +
+      '2. No nos responsabilizamos por objetos dejados en el vehiculo.\n' +
+      '3. Reporte cualquier dano antes de retirar el vehiculo.\n' +
+      '4. Prohibidas reparaciones y sustancias peligrosas.\n' +
+      '5. Retire el vehiculo dentro del horario establecido.\n' +
+      '6. La administracion podra retirar vehiculos que incumplan estas condiciones.';
 
     var celular = r.celular.replace(/\s/g, '');
     if (celular.length === 10) celular = '57' + celular;
