@@ -729,15 +729,15 @@
       body { background: white; }
       .header, .tabs, .no-print { display: none !important; }
       .container { max-width: 58mm; margin: 0; padding: 0; }
-      .card { box-shadow: none; border: none; padding: 5px; border-radius: 0; }
-      .receipt-preview { border: none; padding: 0; font-size: 0.7rem; background: white; }
+      .card { box-shadow: none; border: none; padding: 2px; border-radius: 0; }
+      .receipt-preview { border: none; padding: 0; font-size: 0.6rem; line-height: 1.3; background: white; }
       .receipt-preview::before { display: none; }
-      .receipt-preview .terms { font-size: 0.55rem; }
+      .receipt-preview .receipt-header { font-size: 0.9rem; margin-bottom: 6px; padding-bottom: 6px; }
+      .receipt-preview .receipt-line { padding: 2px 0; }
+      .receipt-preview .receipt-divider { margin: 5px 0; }
+      .receipt-preview .terms { font-size: 0.45rem; line-height: 1.2; margin-top: 6px; }
+      .receipt-preview .terms h4 { font-size: 0.55rem; margin-bottom: 3px; }
       .success-msg { display: none; }
-    }
-
-    @media print and (max-width: 58mm) {
-      .receipt-preview { font-size: 0.6rem; }
     }
 
     .modal-overlay {
@@ -1450,9 +1450,7 @@
       '<p>3. No nos hacemos responsables por objetos de valor dejados dentro del vehiculo.</p>' +
       '<p>4. Cualquier dano o novedad debera reportarse inmediatamente antes de retirar el vehiculo.</p>' +
       '<p>5. El usuario es responsable de respetar las normas de circulacion y senalizacion.</p>' +
-      '<p>6. No se permite realizar reparaciones, almacenar sustancias peligrosas ni actividades no autorizadas.</p>' +
-      '<p>7. El vehiculo debera ser retirado dentro del horario establecido.</p>' +
-      '<p>8. La administracion se reserva el derecho de admision y podra solicitar el retiro de vehiculos que incumplan estas condiciones.</p>' +
+      '<p>6. El vehiculo debera ser retirado dentro del horario establecido.</p>' +
       '</div>';
   }
 
@@ -1546,11 +1544,9 @@
     addText('1.Ingreso implica aceptacion.\n');
     addText('2.Conserve su comprobante.\n');
     addText('3.No responsables por objetos.\n');
-    addText('4.Reporte danos antes de salir.\n');
+    addText('4.Reporte danos antes de salir\n');
     addText('5.Respete normas circulacion.\n');
-    addText('6.No reparaciones/sust.peligr.\n');
-    addText('7.Retire en horario establecido\n');
-    addText('8.Reserva derecho de admision.\n');
+    addText('6.Retire en horario establecido\n');
     addText('--------------------------------\n');
 
     // Centrar
@@ -1619,9 +1615,7 @@
       '3. No nos hacemos responsables por objetos de valor dejados dentro del vehiculo.\n' +
       '4. Reporte cualquier dano o novedad antes de retirar el vehiculo.\n' +
       '5. Respete las normas de circulacion y senalizacion.\n' +
-      '6. No se permiten reparaciones ni sustancias peligrosas.\n' +
-      '7. Retire el vehiculo dentro del horario establecido.\n' +
-      '8. La administracion se reserva el derecho de admision.';
+      '6. Retire el vehiculo dentro del horario establecido.';
 
     var celular = r.celular.replace(/\s/g, '');
     if (celular.length === 10) celular = '57' + celular;
