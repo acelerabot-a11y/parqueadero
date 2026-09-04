@@ -731,18 +731,20 @@
     }
 
     @media print {
-      body { background: white; margin: 0; padding: 0; }
-      .header, .tabs, .no-print { display: none !important; }
+      * { margin: 0; padding: 0; }
+      body { background: white; margin: 0; padding: 0; width: 58mm; }
+      .header, .tabs, .no-print, .section:not(.active), #section-history, #section-stats { display: none !important; }
       .container { max-width: 58mm; margin: 0; padding: 0; }
-      .card { box-shadow: none; border: none; padding: 2px; border-radius: 0; }
-      .receipt-preview { border: none; padding: 0; font-size: 0.5rem; line-height: 1.2; background: white; }
-      .receipt-preview::before { display: none; }
-      .receipt-preview .receipt-header { font-size: 0.75rem; margin-bottom: 4px; padding-bottom: 4px; }
-      .receipt-preview .receipt-line { padding: 1px 0; }
-      .receipt-preview .receipt-divider { margin: 3px 0; }
-      .receipt-preview .terms { font-size: 0.38rem; line-height: 1.1; margin-top: 4px; }
-      .receipt-preview .terms h4 { font-size: 0.45rem; margin-bottom: 2px; }
+      .card { box-shadow: none; border: none; padding: 0; border-radius: 0; background: white; }
       .success-msg { display: none; }
+      .receipt-preview { border: none; padding: 2mm; font-size: 3.2mm; line-height: 1.4; background: white; width: 54mm; }
+      .receipt-preview::before { display: none; }
+      .receipt-preview .receipt-header { font-size: 5mm; margin-bottom: 2mm; padding-bottom: 2mm; }
+      .receipt-preview .receipt-line { padding: 0.5mm 0; font-size: 3mm; }
+      .receipt-preview .receipt-divider { margin: 1.5mm 0; }
+      .receipt-preview .terms { font-size: 2.2mm; line-height: 1.3; margin-top: 2mm; }
+      .receipt-preview .terms h4 { font-size: 2.8mm; margin-bottom: 1mm; }
+      .receipt-preview .terms p { margin-bottom: 0.3mm; }
     }
 
     .modal-overlay {
@@ -1499,103 +1501,8 @@
     actualizarContadorActivos();
   }
 
-  // === IMPRESION TERMICA (RawBT / window.print) ===
-
-  // Generar comandos ESC/POS como bytes
-  function generarESCPOS(registro) {
-    var fecha = new Date(registro.fecha);
-    var cmds = [];
-
-    function addBytes(arr) { cmds.push(arr); }
-    function addText(txt) {
-      for (var i = 0; i < txt.length; i++) {
-        var c = txt.charCodeAt(i);
-        cmds.push([c > 127 ? 63 : c]); // reemplazar caracteres especiales con ?
-      }
-    }
-
-    // Inicializar impresora
-    addBytes([0x1B, 0x40]);
-    // Centrar + Negrita + Doble ancho (no alto)
-    addBytes([0x1B, 0x61, 0x01]);
-    addBytes([0x1B, 0x45, 0x01]);
-    addBytes([0x1D, 0x21, 0x10]);
-    addText('PARQUEADERO\n');
-    // Tamaño normal
-    addBytes([0x1D, 0x21, 0x00]);
-    addBytes([0x1B, 0x45, 0x00]);
-    addText('Comprobante de Ingreso\n');
-    addText('--------------------------------\n');
-
-    // Izquierda
-    addBytes([0x1B, 0x61, 0x00]);
-    addText('Fecha: ' + formatFecha(fecha) + '\n');
-    addText('Hora:  ' + formatHora(fecha) + '\n');
-    addText('--------------------------------\n');
-    addText('Nombre:   ' + registro.nombre + '\n');
-    addText('Celular:  ' + registro.celular + '\n');
-    addText('Placa:    ' + registro.placa + '\n');
-    addText('--------------------------------\n');
-
-    // Terminos
-    addBytes([0x1B, 0x45, 0x01]);
-    addText('TERMINOS Y CONDICIONES\n');
-    addBytes([0x1B, 0x45, 0x00]);
-    addText('1.Conserve su comprobante.\n');
-    addText('2.No responsables por objetos.\n');
-    addText('3.Reporte danos antes de salir\n');
-    addText('4.Prohibidas reparaciones y\n');
-    addText('  sustancias peligrosas.\n');
-    addText('5.Retire en horario establecido\n');
-    addText('6.Podra retirar vehiculos que\n');
-    addText('  incumplan condiciones.\n');
-    addText('--------------------------------\n');
-
-    // Centrar
-    addBytes([0x1B, 0x61, 0x01]);
-    addText('Gracias por su visita\n');
-
-    // Unir todo en un array plano
-    var flat = [];
-    for (var i = 0; i < cmds.length; i++) {
-      for (var j = 0; j < cmds[i].length; j++) {
-        flat.push(cmds[i][j]);
-      }
-    }
-    return new Uint8Array(flat);
-  }
-
-  // Convertir Uint8Array a base64
-  function uint8ToBase64(uint8) {
-    var bin = '';
-    for (var i = 0; i < uint8.length; i++) {
-      bin += String.fromCharCode(uint8[i]);
-    }
-    return btoa(bin);
-  }
-
-  function imprimirConRawBT(registro) {
-    var datos = generarESCPOS(registro);
-    var base64 = uint8ToBase64(datos);
-    var url = 'rawbt:base64,' + base64;
-    window.location.href = url;
-    showToast('Enviando a impresora...', 'success');
-  }
-
   function imprimirRecibo() {
-    if (!ultimoRegistro) {
-      window.print();
-      return;
-    }
-
-    // Detectar si es celular Android (RawBT disponible)
-    var esAndroid = /Android/i.test(navigator.userAgent);
-
-    if (esAndroid) {
-      imprimirConRawBT(ultimoRegistro);
-    } else {
-      window.print();
-    }
+    window.print();
   }
 
   function compartirWhatsApp() {
@@ -1619,8 +1526,14 @@
 
     var celular = r.celular.replace(/\s/g, '');
     if (celular.length === 10) celular = '57' + celular;
-    var url = 'https://wa.me/' + celular + '?text=' + encodeURIComponent(msg);
-    window.open(url, '_blank');
+    var celularWA = celular;
+    var url = 'https://wa.me/' + celularWA + '?text=' + encodeURIComponent(msg);
+    // Usar location.href en movil para evitar bloqueo de popups
+    if (/Android|iPhone|iPad/i.test(navigator.userAgent)) {
+      window.location.href = url;
+    } else {
+      window.open(url, '_blank');
+    }
   }
 
   function nuevoRegistro() {
@@ -1705,27 +1618,13 @@
   }
 
   function imprimirReciboModal() {
-    var registros = getRegistros();
     var contenido = document.getElementById('modal-receipt-content').innerHTML;
-    var match = contenido.match(/>([A-Z]{3}\s?\d{2,4}[A-Z]?)</);
-    var registro = null;
-    if (match) {
-      registro = registros.find(function(r) { return r.placa === match[1]; });
-    }
-
-    var esAndroid = /Android/i.test(navigator.userAgent);
-
-    if (registro && esAndroid) {
-      cerrarModal();
-      imprimirConRawBT(registro);
-    } else {
-      document.getElementById('receipt-preview').innerHTML = contenido;
-      document.getElementById('form-card').style.display = 'none';
-      document.getElementById('success-card').style.display = 'block';
-      cerrarModal();
-      showSection('register', document.querySelectorAll('.tab')[0]);
-      setTimeout(function() { window.print(); }, 300);
-    }
+    document.getElementById('receipt-preview').innerHTML = contenido;
+    document.getElementById('form-card').style.display = 'none';
+    document.getElementById('success-card').style.display = 'block';
+    cerrarModal();
+    showSection('register', document.querySelectorAll('.tab')[0]);
+    setTimeout(function() { window.print(); }, 300);
   }
 
   function cerrarModal() {
