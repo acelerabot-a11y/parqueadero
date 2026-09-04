@@ -725,8 +725,13 @@
     .success-msg p { color: var(--text-muted); font-size: 0.85rem; }
 
     /* Print styles */
+    @page {
+      size: 58mm auto;
+      margin: 0;
+    }
+
     @media print {
-      body { background: white; }
+      body { background: white; margin: 0; padding: 0; }
       .header, .tabs, .no-print { display: none !important; }
       .container { max-width: 58mm; margin: 0; padding: 0; }
       .card { box-shadow: none; border: none; padding: 2px; border-radius: 0; }
