@@ -730,13 +730,13 @@
       .header, .tabs, .no-print { display: none !important; }
       .container { max-width: 58mm; margin: 0; padding: 0; }
       .card { box-shadow: none; border: none; padding: 2px; border-radius: 0; }
-      .receipt-preview { border: none; padding: 0; font-size: 0.6rem; line-height: 1.3; background: white; }
+      .receipt-preview { border: none; padding: 0; font-size: 0.5rem; line-height: 1.2; background: white; }
       .receipt-preview::before { display: none; }
-      .receipt-preview .receipt-header { font-size: 0.9rem; margin-bottom: 6px; padding-bottom: 6px; }
-      .receipt-preview .receipt-line { padding: 2px 0; }
-      .receipt-preview .receipt-divider { margin: 5px 0; }
-      .receipt-preview .terms { font-size: 0.45rem; line-height: 1.2; margin-top: 6px; }
-      .receipt-preview .terms h4 { font-size: 0.55rem; margin-bottom: 3px; }
+      .receipt-preview .receipt-header { font-size: 0.75rem; margin-bottom: 4px; padding-bottom: 4px; }
+      .receipt-preview .receipt-line { padding: 1px 0; }
+      .receipt-preview .receipt-divider { margin: 3px 0; }
+      .receipt-preview .terms { font-size: 0.38rem; line-height: 1.1; margin-top: 4px; }
+      .receipt-preview .terms h4 { font-size: 0.45rem; margin-bottom: 2px; }
       .success-msg { display: none; }
     }
 
@@ -1438,10 +1438,6 @@
       '<span class="label">Placa:</span>' +
       '<span>' + registro.placa + '</span>' +
       '</div>' +
-      '<div class="receipt-line">' +
-      '<span class="label">Vehiculo:</span>' +
-      '<span>' + getVehicleIcon(registro.tipo) + ' ' + registro.tipo + '</span>' +
-      '</div>' +
       '<div class="receipt-divider"></div>' +
       '<div class="terms">' +
       '<h4>TERMINOS Y CONDICIONES</h4>' +
@@ -1515,15 +1511,15 @@
 
     // Inicializar impresora
     addBytes([0x1B, 0x40]);
-    // Centrar + Negrita + Doble tamaño
+    // Centrar + Negrita + Doble ancho (no alto)
     addBytes([0x1B, 0x61, 0x01]);
     addBytes([0x1B, 0x45, 0x01]);
-    addBytes([0x1D, 0x21, 0x11]);
+    addBytes([0x1D, 0x21, 0x10]);
     addText('PARQUEADERO\n');
     // Tamaño normal
     addBytes([0x1D, 0x21, 0x00]);
-    addText('Comprobante de Ingreso\n');
     addBytes([0x1B, 0x45, 0x00]);
+    addText('Comprobante de Ingreso\n');
     addText('--------------------------------\n');
 
     // Izquierda
@@ -1534,7 +1530,6 @@
     addText('Nombre:   ' + registro.nombre + '\n');
     addText('Celular:  ' + registro.celular + '\n');
     addText('Placa:    ' + registro.placa + '\n');
-    addText('Vehiculo: ' + registro.tipo + '\n');
     addText('--------------------------------\n');
 
     // Terminos
@@ -1554,8 +1549,6 @@
     // Centrar
     addBytes([0x1B, 0x61, 0x01]);
     addText('Gracias por su visita\n');
-    // Avanzar papel (solo 1 linea)
-    addBytes([0x1B, 0x64, 0x01]);
 
     // Unir todo en un array plano
     var flat = [];
