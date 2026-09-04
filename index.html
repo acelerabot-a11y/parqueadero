@@ -1554,8 +1554,8 @@
     // Centrar
     addBytes([0x1B, 0x61, 0x01]);
     addText('Gracias por su visita\n');
-    // Avanzar papel
-    addBytes([0x1B, 0x64, 0x04]);
+    // Avanzar papel (solo 1 linea)
+    addBytes([0x1B, 0x64, 0x01]);
 
     // Unir todo en un array plano
     var flat = [];
