@@ -1065,8 +1065,8 @@
         </div>
       </div>
 
-      <div class="form-group">
-        <label>Tipo de Ingreso</label>
+      <div class="form-group" id="grupo-ingreso" style="display:none;">
+        <label>Tipo de Ingreso (Bus)</label>
         <div class="vehicle-types">
           <div class="vehicle-type ingreso-type selected" onclick="selectIngreso(this, 'Normal')" data-ingreso="Normal">
             <div class="icon">&#x1f4b5;</div>
@@ -1415,8 +1415,9 @@
           vehiculoSeleccionado = encontrado.tipo;
         }
       }
-      // Si la ultima vez entro como aliado, sugerir aliado y su ruta
-      if (encontrado.ingreso === 'Aliado') {
+      actualizarOpcionAliado();
+      // Si la ultima vez entro como aliado (bus), sugerir aliado y su ruta
+      if (encontrado.ingreso === 'Aliado' && vehiculoSeleccionado === 'Bus') {
         var btnAliado = document.querySelector('.ingreso-type[data-ingreso="Aliado"]');
         if (btnAliado) selectIngreso(btnAliado, 'Aliado');
         document.getElementById('ruta').value = encontrado.ruta || '';
@@ -1514,6 +1515,18 @@
     document.querySelectorAll('.vehicle-type:not(.ingreso-type)').forEach(v => v.classList.remove('selected'));
     el.classList.add('selected');
     vehiculoSeleccionado = tipo;
+    actualizarOpcionAliado();
+  }
+
+  // La opcion Aliado/Cortesia solo aplica a buses; los demas son siempre Normal
+  function actualizarOpcionAliado() {
+    var esBus = vehiculoSeleccionado === 'Bus';
+    document.getElementById('grupo-ingreso').style.display = esBus ? 'block' : 'none';
+    if (!esBus && ingresoSeleccionado !== 'Normal') {
+      var btnNormal = document.querySelector('.ingreso-type[data-ingreso="Normal"]');
+      if (btnNormal) selectIngreso(btnNormal, 'Normal');
+      document.getElementById('ruta').value = '';
+    }
   }
 
   // ===== Aliados / cortesia =====
@@ -1688,11 +1701,11 @@
       nombre: nombre,
       celular: celular,
       tipo: vehiculoSeleccionado,
-      ingreso: ingresoSeleccionado,
+      ingreso: vehiculoSeleccionado === 'Bus' ? ingresoSeleccionado : 'Normal',
       fecha: new Date().toISOString()
     };
 
-    if (ingresoSeleccionado !== 'Aliado') {
+    if (registro.ingreso !== 'Aliado') {
       guardarYMostrar(registro);
       return;
     }
